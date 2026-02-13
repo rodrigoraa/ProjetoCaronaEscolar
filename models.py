@@ -26,6 +26,9 @@ class CaronaModel:
                 df_drivers['Vagas'] = pd.to_numeric(df_drivers['Vagas'], errors='coerce').fillna(4).astype(int)
             else:
                 df_drivers['Vagas'] = 4
+                
+            if 'Telefone' not in df_drivers.columns:
+                df_drivers['Telefone'] = ""
             
             for day in days:
                 if day not in df_drivers.columns:
@@ -42,25 +45,25 @@ class CaronaModel:
             st.session_state['unsaved_changes'] = False
             
         except Exception:
-            cols_driver = ["Nome", "Vagas"] + days
+            cols_driver = ["Nome", "Telefone", "Vagas"] + days
             st.session_state['drivers'] = pd.DataFrame(columns=cols_driver)
             
             cols_pass = ["Nome"] + days
             st.session_state['passengers'] = pd.DataFrame(columns=cols_pass)
 
     def commit_changes(self):
-        """Salva os dados no Google Sheets sem interagir com a tela (UI)"""
         self.conn.update(worksheet="Motoristas", data=st.session_state['drivers'])
         time.sleep(1)
         self.conn.update(worksheet="Passageiros", data=st.session_state['passengers'])
         st.session_state['unsaved_changes'] = False
 
-    def update_driver_full(self, old_name, new_name, new_vagas, new_days_dict):
+    def update_driver_full(self, old_name, new_name, new_telefone, new_vagas, new_days_dict):
         df_d = st.session_state['drivers']
         idx = df_d[df_d['Nome'] == old_name].index
         
         if not idx.empty:
             df_d.loc[idx, 'Nome'] = new_name
+            df_d.loc[idx, 'Telefone'] = str(new_telefone)
             df_d.loc[idx, 'Vagas'] = new_vagas
             
             for day, is_on in new_days_dict.items():

@@ -11,7 +11,6 @@ class CaronaController:
         self.view = CaronaView()
 
     def processar_estatisticas(self, df_drivers, df_passengers, selected_day):
-        """Pega os dados brutos do Model, calcula e ordena para a View."""
         active_drivers = [
             (idx, row) for idx, row in df_drivers.iterrows() 
             if not (selected_day in row and row[selected_day] == "OFF")
@@ -55,13 +54,14 @@ class CaronaController:
         result_sidebar = self.view.render_sidebar()
         
         if result_sidebar and result_sidebar[0] == "CREATE":
-            _, tipo, nome, _, vagas, dias_selecionados, _, _, _, _ = result_sidebar
+            tupla_sidebar = result_sidebar + (None,) * (11 - len(result_sidebar))
+            _, tipo, nome, telefone, vagas, dias_selecionados, _, _, _, _, _ = tupla_sidebar
             
             dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
             
             if nome:
                 if tipo == "Motorista":
-                    new_data = {"Nome": nome, "Vagas": vagas}
+                    new_data = {"Nome": nome, "Telefone": telefone, "Vagas": vagas}
                     for dia in dias_semana:
                         new_data[dia] = "ON" if dias_selecionados.get(dia) else "OFF"
                     
@@ -92,7 +92,8 @@ class CaronaController:
         )
 
         if result_dash:
-            action, _, _, _, _, _, param1, param2, param3, param4 = result_dash
+            tupla_completa = result_dash + (None,) * (11 - len(result_dash))
+            action, _, _, _, _, _, param1, param2, param3, param4, param5 = tupla_completa
 
             if action == "ADD_BULK":
                 if param1: 
@@ -114,7 +115,7 @@ class CaronaController:
                 st.rerun()
             
             elif action == "UPDATE_DRIVER":
-                self.model.update_driver_full(param1, param2, param3, param4)
+                self.model.update_driver_full(param1, param2, param3, param4, param5)
                 st.toast("Motorista atualizado (Local)")
                 st.rerun()
 

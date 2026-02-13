@@ -58,6 +58,11 @@ class CaronaView:
                 div[data-testid="stButton"] button {
                     width: 100%;
                 }
+                /* Dá um destaque maior para o título do Expander */
+                .streamlit-expanderHeader {
+                    font-size: 16px;
+                    font-weight: 600;
+                }
             </style>
         """, unsafe_allow_html=True)
 
@@ -135,20 +140,20 @@ class CaronaView:
                 progresso = ocupados / total_vagas if total_vagas > 0 else 0
                 if progresso > 1: progresso = 1
                 
-                with st.container(border=True):
-                    col_a, col_b = st.columns([3, 1])
-                    col_a.subheader(f"🚗 {driver_name}")
-                    col_b.write(f"**{ocupados}/{total_vagas}**")
+                titulo_expander = f"🚗 {driver_name} • {ocupados}/{total_vagas}"
+                
+                with st.expander(titulo_expander, expanded=False):
+                    
                     st.progress(progresso)
                     
                     swap_key = f"swap_mode_{index}"
                     
                     if ocupados > 0:
-                        if st.button("🔄 Trocar", key=f"btn_swap_toggle_{index}"):
+                        if st.button("🔄 Trocar Todos", key=f"btn_swap_toggle_{index}"):
                             st.session_state[swap_key] = not st.session_state.get(swap_key, False)
                         
                         if st.session_state.get(swap_key, False):
-                            st.info("Transferir passageiros para:")
+                            st.info("Transferir para:")
                             
                             candidatos_validos = [m for m, v in mapa_vagas.items() if m != driver_name and v >= ocupados]
                             
@@ -169,7 +174,9 @@ class CaronaView:
                                     st.session_state[swap_key] = False
                                     st.rerun()
                             else:
-                                st.error(f"Nenhum motorista com {ocupados} vagas livres.")
+                                st.error(f"Nenhum com {ocupados} vagas.")
+                    
+                    st.divider()
                     
                     if not current_passengers.empty:
                         for idx_p, passenger in current_passengers.iterrows():
@@ -197,7 +204,7 @@ class CaronaView:
                                 max_selections=vagas_restantes,
                                 key=f"sel_{driver_name}_{selected_day}",
                                 label_visibility="collapsed",
-                                placeholder="Adicionar..."
+                                placeholder="+ Passageiro..."
                             )
                             if escolhidos:
                                 if st.button("Adicionar", key=f"add_{driver_name}_{selected_day}", use_container_width=True):

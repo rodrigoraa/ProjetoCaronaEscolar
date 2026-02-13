@@ -1,55 +1,136 @@
 import pandas as pd
 import streamlit as st
+from streamlit_gsheets import GSheetsConnection
+import time
 
 class CaronaModel:
     def __init__(self):
-        if 'drivers' not in st.session_state:
-            st.session_state['drivers'] = pd.DataFrame(
-                columns=["Nome", "Vagas", "Região"]
-            )
-        if 'passengers' not in st.session_state:
-            st.session_state['passengers'] = pd.DataFrame(
-                columns=["Nome", "Região"]
-            )
+        self.conn = st.connection("gsheets", type=GSheetsConnection)
+        self._ensure_data_loaded()
+
+    def _ensure_data_loaded(self):
+        if 'unsaved_changes' not in st.session_state:
+            st.session_state['unsaved_changes'] = False
+
+        if 'drivers' not in st.session_state or 'passengers' not in st.session_state:
+            self.force_reload()
+
+    def mark_unsaved(self):
+        st.session_state['unsaved_changes'] = True
+
+    def force_reload(self):
+        days = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
+        try:
+            df_drivers = self.conn.read(worksheet="Motoristas", ttl=0)
+            if 'Vagas' in df_drivers.columns:
+                df_drivers['Vagas'] = pd.to_numeric(df_drivers['Vagas'], errors='coerce').fillna(4).astype(int)
+            else:
+                df_drivers['Vagas'] = 4
+            
+            for day in days:
+                if day not in df_drivers.columns:
+                    df_drivers[day] = "ON" 
+            
+            st.session_state['drivers'] = df_drivers
+
+            df_passengers = self.conn.read(worksheet="Passageiros", ttl=0)
+            for day in days:
+                if day not in df_passengers.columns:
+                    df_passengers[day] = None
+            
+            if 'Endereço' not in df_passengers.columns: df_passengers['Endereço'] = ""
+            st.session_state['passengers'] = df_passengers
+            
+            st.session_state['unsaved_changes'] = False
+            
+        except Exception:
+            cols_driver = ["Nome", "Vagas"] + days
+            st.session_state['drivers'] = pd.DataFrame(columns=cols_driver)
+            
+            cols_pass = ["Nome", "Endereço"] + days
+            st.session_state['passengers'] = pd.DataFrame(columns=cols_pass)
+
+    def commit_changes(self):
+        try:
+            with st.spinner("Salvando na planilha..."):
+                self.conn.update(worksheet="Motoristas", data=st.session_state['drivers'])
+                time.sleep(1)
+                self.conn.update(worksheet="Passageiros", data=st.session_state['passengers'])
+                st.session_state['unsaved_changes'] = False
+                st.toast("✅ Todos os dados foram salvos!", icon="💾")
+        except Exception as e:
+            st.error(f"Erro ao salvar: {e}")
+
+    def update_driver_full(self, old_name, new_name, new_vagas, new_days_dict):
+        df_d = st.session_state['drivers']
+        idx = df_d[df_d['Nome'] == old_name].index
+        
+        if not idx.empty:
+            df_d.loc[idx, 'Nome'] = new_name
+            df_d.loc[idx, 'Vagas'] = new_vagas
+            
+            for day, is_on in new_days_dict.items():
+                df_d.loc[idx, day] = "ON" if is_on else "OFF"
+            
+            st.session_state['drivers'] = df_d
+
+            if old_name != new_name:
+                df_p = st.session_state['passengers']
+                days = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
+                for day in days:
+                    df_p[day] = df_p[day].replace(old_name, new_name)
+                st.session_state['passengers'] = df_p
+
+            self.mark_unsaved()
+    
+    def transfer_passengers(self, old_driver, new_driver, day_column):
+        df_p = st.session_state['passengers']
+        df_p.loc[df_p[day_column] == old_driver, day_column] = new_driver
+        st.session_state['passengers'] = df_p
+        self.mark_unsaved()
+
+    def assign_passenger_bulk(self, passenger_list, driver_name, day_column):
+        df_p = st.session_state['passengers']
+        for p_name in passenger_list:
+            df_p.loc[df_p['Nome'] == p_name, day_column] = driver_name
+        st.session_state['passengers'] = df_p
+        self.mark_unsaved()
+
+    def assign_passenger(self, passenger_name, driver_name, day_column):
+        df_p = st.session_state['passengers']
+        df_p.loc[df_p['Nome'] == passenger_name, day_column] = driver_name
+        st.session_state['passengers'] = df_p
+        self.mark_unsaved()
+
+    def unassign_passenger(self, passenger_name, day_column):
+        df_p = st.session_state['passengers']
+        df_p.loc[df_p['Nome'] == passenger_name, day_column] = ""
+        st.session_state['passengers'] = df_p
+        self.mark_unsaved()
+
+    def delete_driver(self, driver_name):
+        df_d = st.session_state['drivers']
+        df_d = df_d[df_d['Nome'] != driver_name]
+        st.session_state['drivers'] = df_d
+
+        df_p = st.session_state['passengers']
+        days = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
+        for day in days:
+            df_p[day] = df_p[day].replace(driver_name, "")
+        st.session_state['passengers'] = df_p
+        
+        self.mark_unsaved()
+
+    def save_new_driver(self, new_driver_df):
+        st.session_state['drivers'] = pd.concat([st.session_state['drivers'], new_driver_df], ignore_index=True)
+        self.conn.update(worksheet="Motoristas", data=st.session_state['drivers'])
+
+    def save_new_passenger(self, new_passenger_df):
+        st.session_state['passengers'] = pd.concat([st.session_state['passengers'], new_passenger_df], ignore_index=True)
+        self.conn.update(worksheet="Passageiros", data=st.session_state['passengers'])
 
     def get_drivers(self):
         return st.session_state['drivers']
 
     def get_passengers(self):
         return st.session_state['passengers']
-
-    def add_driver(self, nome, vagas, regiao):
-        new_driver = pd.DataFrame([{"Nome": nome, "Vagas": vagas, "Região": regiao}])
-        st.session_state['drivers'] = pd.concat([st.session_state['drivers'], new_driver], ignore_index=True)
-
-    def add_passenger(self, nome, regiao):
-        new_passenger = pd.DataFrame([{"Nome": nome, "Região": regiao}])
-        st.session_state['passengers'] = pd.concat([st.session_state['passengers'], new_passenger], ignore_index=True)
-
-    def update_drivers(self, new_df):
-        st.session_state['drivers'] = new_df
-
-    def update_passengers(self, new_df):
-        st.session_state['passengers'] = new_df
-
-    def allocate_rides(self):
-        drivers = st.session_state['drivers'].copy()
-        passengers = st.session_state['passengers']['Nome'].tolist()
-        allocation_results = []
-
-        for index, driver in drivers.iterrows():
-            seats = int(driver['Vagas'])
-            allocated = []
-        
-            while seats > 0 and passengers:
-                allocated.append(passengers.pop(0))
-                seats -= 1
-            
-            allocation_results.append({
-                "Motorista": driver['Nome'],
-                "Região": driver['Região'],
-                "Passageiros": ", ".join(allocated) if allocated else "---",
-                "Vagas Livres": seats
-            })
-        
-        return pd.DataFrame(allocation_results), passengers

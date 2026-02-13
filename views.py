@@ -121,7 +121,7 @@ class CaronaView:
 
                     st.markdown("<br>", unsafe_allow_html=True)
                     
-                    mensagem = f"Olá {driver_name}, tudo bem? Segue a sua lista de passageiros para {selected_day}!\n\n"
+                    mensagem = f"Olá, O Expresso do Conhecimento já tem seus passageiros confirmados para {selected_day}, com destino à escola: \n\n"
                     if not current_passengers.empty:
                         for idx_p, passenger in current_passengers.iterrows():
                             mensagem += f"✓ {passenger['Nome']}\n"

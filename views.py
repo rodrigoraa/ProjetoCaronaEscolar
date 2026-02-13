@@ -25,11 +25,11 @@ class CaronaView:
             dias_selecionados["Quinta"] = c1.checkbox("Qui", value=True)
             dias_selecionados["Sexta"] = c2.checkbox("Sex", value=True)
             
-            if st.button("Salvar Cadastro", type="primary"):
+            if st.button("Salvar Cadastro", type="primary", use_container_width=True):
                 return "CREATE", tipo, nome, endereco, vagas, dias_selecionados, None, None, None, None
 
             st.divider()
-            if st.button("🔄 Recarregar Dados"):
+            if st.button("🔄 Recarregar Dados", use_container_width=True):
                 st.session_state.clear()
                 st.rerun()
             
@@ -45,13 +45,16 @@ class CaronaView:
         st.markdown("""
             <style>
                 .block-container {
-                    padding-top: 1rem;
-                    padding-bottom: 5rem;
-                    padding-left: 2rem;
-                    padding-right: 2rem;
+                    padding-top: 1.5rem !important;
+                    padding-bottom: 5rem !important;
+                    padding-left: 0.5rem !important;
+                    padding-right: 0.5rem !important;
                     max-width: 100%;
                 }
-                /* Deixa o botão de troca largura total para facilitar o clique no mobile */
+                /* Esconde cabaçalho e rodapé do Streamlit para parecer um App nativo */
+                header {visibility: hidden;}
+                footer {visibility: hidden;}
+                
                 div[data-testid="stButton"] button {
                     width: 100%;
                 }
@@ -101,16 +104,16 @@ class CaronaView:
                 qtd_motoristas_vagas += 1
                 mapa_vagas[d_name] = restante
 
-        st.markdown("##### Resumo do Dia")
-        m1, m2 = st.columns(2)
-        m1.metric("Total Passageiros (Ativos)", qtd_total_passengers)
-        m2.metric("Passageiros Alocados", qtd_alocados)
-        
-        m3, m4 = st.columns(2)
-        m3.metric("Passageiros Não Alocados", qtd_nao_alocados, delta_color="inverse")
-        m4.metric("Total Motoristas (Hoje)", qtd_total_motoristas)
-        m5 = st.columns(1)[0]
-        m5.metric("Motoristas c/ Vagas Livres", qtd_motoristas_vagas)
+        with st.expander("📊 Resumo do Dia", expanded=False):
+            m1, m2 = st.columns(2)
+            m1.metric("Total Passageiros", qtd_total_passengers)
+            m2.metric("Alocados", qtd_alocados)
+            
+            m3, m4 = st.columns(2)
+            m3.metric("Não Alocados", qtd_nao_alocados, delta_color="inverse")
+            m4.metric("Total Motoristas", qtd_total_motoristas)
+            
+            st.metric("Motoristas c/ Vagas Livres", qtd_motoristas_vagas)
         
         st.divider()
 
@@ -132,7 +135,7 @@ class CaronaView:
                 progresso = ocupados / total_vagas if total_vagas > 0 else 0
                 if progresso > 1: progresso = 1
                 
-                with st.container(height=850, border=True):
+                with st.container(border=True):
                     col_a, col_b = st.columns([3, 1])
                     col_a.subheader(f"🚗 {driver_name}")
                     col_b.write(f"**{ocupados}/{total_vagas}**")
@@ -207,7 +210,11 @@ class CaronaView:
                         st.caption("Dias ON:")
                         new_days = {}
                         days_list = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
-                        cols_dias = st.columns(5)
+                        
+                        c_dias1, c_dias2, c_dias3 = st.columns(3)
+                        c_dias4, c_dias5 = st.columns(2)
+                        cols_dias = [c_dias1, c_dias2, c_dias3, c_dias4, c_dias5]
+                        
                         for k, d in enumerate(days_list):
                             is_checked = True
                             if d in driver and driver[d] == "OFF":

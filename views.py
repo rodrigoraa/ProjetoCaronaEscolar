@@ -156,10 +156,9 @@ class CaronaView:
                             with c_info:
                                 st.markdown(f"<div style='line-height: 1.2; padding-top: 0.2rem;'><strong>{p_name}</strong></div>", unsafe_allow_html=True)
                             with c_action:
-                                if st.button("X", key=f"rem_{driver_name}_{p_name}_{selected_day}"):
+                                if st.button("❌", key=f"rem_{driver_name}_{p_name}_{selected_day}"):
                                     st.session_state["motorista_ativo"] = driver_name
                                     return "REMOVE", None, None, None, None, None, p_name, None, None, None
-                            st.markdown("<hr style='margin: 0.1rem 0; border: none; border-top: 1px solid rgba(128,128,128,0.2);'>", unsafe_allow_html=True)
 
                     if ocupados < total_vagas:
                         opcoes = sem_carona['Nome'].tolist()

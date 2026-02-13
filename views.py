@@ -51,14 +51,12 @@ class CaronaView:
                     padding-right: 0.5rem !important;
                     max-width: 100%;
                 }
-                /* Esconde cabaçalho e rodapé do Streamlit para parecer um App nativo */
                 header {visibility: hidden;}
                 footer {visibility: hidden;}
                 
                 div[data-testid="stButton"] button {
                     width: 100%;
                 }
-                /* Dá um destaque maior para o título do Expander */
                 .streamlit-expanderHeader {
                     font-size: 16px;
                     font-weight: 600;
@@ -143,7 +141,6 @@ class CaronaView:
                 titulo_expander = f"🚗 {driver_name} • {ocupados}/{total_vagas}"
                 
                 with st.expander(titulo_expander, expanded=False):
-                    
                     st.progress(progresso)
                     
                     swap_key = f"swap_mode_{index}"
@@ -176,7 +173,7 @@ class CaronaView:
                             else:
                                 st.error(f"Nenhum com {ocupados} vagas.")
                     
-                    st.divider()
+                    st.markdown("<hr style='margin: 0.5rem 0; border: none; border-top: 2px solid rgba(128,128,128,0.2);'>", unsafe_allow_html=True)
                     
                     if not current_passengers.empty:
                         for idx_p, passenger in current_passengers.iterrows():
@@ -184,16 +181,19 @@ class CaronaView:
                             c_info, c_action = st.columns([4, 1])
                             
                             with c_info:
-                                st.write(f"**{p_name}**")
+                                end_html = ""
                                 if 'Endereço' in passenger:
                                     end_str = str(passenger['Endereço']).strip()
                                     if end_str and end_str.lower() != "nan" and end_str.lower() != "none":
-                                        st.caption(f"{end_str}")
+                                        end_html = f"<br><span style='font-size: 0.85em; color: gray;'>📍 {end_str}</span>"
+                                
+                                st.markdown(f"<div style='line-height: 1.2; padding-top: 0.3rem;'><strong>{p_name}</strong>{end_html}</div>", unsafe_allow_html=True)
                             
-                            if c_action.button("❌", key=f"rem_{driver_name}_{p_name}_{selected_day}"):
-                                return "REMOVE", None, None, None, None, None, p_name, None, None, None
+                            with c_action:
+                                if st.button("❌", key=f"rem_{driver_name}_{p_name}_{selected_day}"):
+                                    return "REMOVE", None, None, None, None, None, p_name, None, None, None
                             
-                            st.divider()
+                            st.markdown("<hr style='margin: 0.2rem 0; border: none; border-top: 1px solid rgba(128,128,128,0.2);'>", unsafe_allow_html=True)
 
                     if ocupados < total_vagas:
                         opcoes = sem_carona['Nome'].tolist()
@@ -228,10 +228,10 @@ class CaronaView:
                                 is_checked = False
                             new_days[d] = cols_dias[k].checkbox(d[:3], value=is_checked, key=f"d_{d}_{index}")
 
-                        if st.button("💾 Salvar Alterações", key=f"save_{index}", use_container_width=True):
+                        if st.button("💾 Salvar", key=f"save_{index}", use_container_width=True):
                             return "UPDATE_DRIVER", None, None, None, None, None, driver_name, new_name, new_vagas, new_days
                         
-                        if st.button("🗑️ Excluir Motorista", key=f"del_{index}", use_container_width=True):
+                        if st.button("🗑️ Excluir", key=f"del_{index}", use_container_width=True):
                              return "DELETE_DRIVER", None, None, None, None, None, driver_name, None, None, None
 
         st.divider()

@@ -38,28 +38,22 @@ class CaronaModel:
                 if day not in df_passengers.columns:
                     df_passengers[day] = None
             
-            if 'Endereço' not in df_passengers.columns: df_passengers['Endereço'] = ""
             st.session_state['passengers'] = df_passengers
-            
             st.session_state['unsaved_changes'] = False
             
         except Exception:
             cols_driver = ["Nome", "Vagas"] + days
             st.session_state['drivers'] = pd.DataFrame(columns=cols_driver)
             
-            cols_pass = ["Nome", "Endereço"] + days
+            cols_pass = ["Nome"] + days
             st.session_state['passengers'] = pd.DataFrame(columns=cols_pass)
 
     def commit_changes(self):
-        try:
-            with st.spinner("Salvando na planilha..."):
-                self.conn.update(worksheet="Motoristas", data=st.session_state['drivers'])
-                time.sleep(1)
-                self.conn.update(worksheet="Passageiros", data=st.session_state['passengers'])
-                st.session_state['unsaved_changes'] = False
-                st.toast("✅ Todos os dados foram salvos!", icon="💾")
-        except Exception as e:
-            st.error(f"Erro ao salvar: {e}")
+        """Salva os dados no Google Sheets sem interagir com a tela (UI)"""
+        self.conn.update(worksheet="Motoristas", data=st.session_state['drivers'])
+        time.sleep(1)
+        self.conn.update(worksheet="Passageiros", data=st.session_state['passengers'])
+        st.session_state['unsaved_changes'] = False
 
     def update_driver_full(self, old_name, new_name, new_vagas, new_days_dict):
         df_d = st.session_state['drivers']
@@ -123,11 +117,11 @@ class CaronaModel:
 
     def save_new_driver(self, new_driver_df):
         st.session_state['drivers'] = pd.concat([st.session_state['drivers'], new_driver_df], ignore_index=True)
-        self.conn.update(worksheet="Motoristas", data=st.session_state['drivers'])
+        self.mark_unsaved()
 
     def save_new_passenger(self, new_passenger_df):
         st.session_state['passengers'] = pd.concat([st.session_state['passengers'], new_passenger_df], ignore_index=True)
-        self.conn.update(worksheet="Passageiros", data=st.session_state['passengers'])
+        self.mark_unsaved()
 
     def get_drivers(self):
         return st.session_state['drivers']

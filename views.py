@@ -51,47 +51,6 @@ class CaronaView:
             </style>
         """, unsafe_allow_html=True)
 
-    def _calcular_estatisticas(self, df_drivers, df_passengers, selected_day):
-        """Isola a matemática. Futuramente, mova isso para o Controller."""
-        active_drivers = [
-            (idx, row) for idx, row in df_drivers.iterrows() 
-            if not (selected_day in row and row[selected_day] == "OFF")
-        ]
-        
-        active_drivers.sort(
-            key=lambda d: (
-                len(df_passengers[df_passengers[selected_day] == d[1]['Nome']]) == 0, 
-                d[1]['Nome']
-            )
-        )
-
-        nao_vai = df_passengers[df_passengers[selected_day] == "NÃO VAI"]
-        sem_carona = df_passengers[
-            (df_passengers[selected_day] != "NÃO VAI") & 
-            ((df_passengers[selected_day].isnull()) | (df_passengers[selected_day] == ""))
-        ]
-
-        mapa_vagas = {}
-        qtd_motoristas_vagas = 0
-        for idx, d in active_drivers:
-            d_name = d['Nome']
-            tot = int(d.get('Vagas', 4))
-            ocp = len(df_passengers[df_passengers[selected_day] == d_name])
-            restante = tot - ocp
-            if restante > 0:
-                qtd_motoristas_vagas += 1
-                mapa_vagas[d_name] = restante
-
-        stats = {
-            "total_passengers": len(df_passengers) - len(nao_vai),
-            "nao_alocados": len(sem_carona),
-            "alocados": (len(df_passengers) - len(nao_vai)) - len(sem_carona),
-            "total_motoristas": len(active_drivers),
-            "motoristas_com_vagas": qtd_motoristas_vagas
-        }
-        
-        return active_drivers, sem_carona, mapa_vagas, stats
-
     def _renderizar_resumo(self, stats):
         """Renderiza apenas a caixinha de métricas."""
         with st.expander("📊 Resumo do Dia", expanded=False):
@@ -192,16 +151,14 @@ class CaronaView:
 
         return None
 
-    def render_mobile_dashboard(self, df_drivers, df_passengers, selected_day):
+    def render_mobile_dashboard(self, active_drivers, sem_carona, mapa_vagas, stats, df_passengers, selected_day):
         self._aplicar_estilos()
 
         if st.session_state.get('unsaved_changes'):
             st.warning("⚠️ Você tem alterações não salvas! Clique em 'Salvar Tudo' no final da página.")
         
         st.header(f"📅 Gestão: {selected_day}")
-
-        active_drivers, sem_carona, mapa_vagas, stats = self._calcular_estatisticas(df_drivers, df_passengers, selected_day)
-
+        
         self._renderizar_resumo(stats)
         st.divider()
 

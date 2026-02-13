@@ -10,11 +10,52 @@ class CaronaController:
         self.model = CaronaModel()
         self.view = CaronaView()
 
+    def processar_estatisticas(self, df_drivers, df_passengers, selected_day):
+        """Pega os dados brutos do Model, calcula e ordena para a View."""
+        active_drivers = [
+            (idx, row) for idx, row in df_drivers.iterrows() 
+            if not (selected_day in row and row[selected_day] == "OFF")
+        ]
+        
+        active_drivers.sort(
+            key=lambda d: (
+                len(df_passengers[df_passengers[selected_day] == d[1]['Nome']]) == 0, 
+                d[1]['Nome']
+            )
+        )
+
+        nao_vai = df_passengers[df_passengers[selected_day] == "NÃO VAI"]
+        sem_carona = df_passengers[
+            (df_passengers[selected_day] != "NÃO VAI") & 
+            ((df_passengers[selected_day].isnull()) | (df_passengers[selected_day] == ""))
+        ]
+
+        mapa_vagas = {}
+        qtd_motoristas_vagas = 0
+        for idx, d in active_drivers:
+            d_name = d['Nome']
+            tot = int(d.get('Vagas', 4))
+            ocp = len(df_passengers[df_passengers[selected_day] == d_name])
+            restante = tot - ocp
+            if restante > 0:
+                qtd_motoristas_vagas += 1
+                mapa_vagas[d_name] = restante
+
+        stats = {
+            "total_passengers": len(df_passengers) - len(nao_vai),
+            "nao_alocados": len(sem_carona),
+            "alocados": (len(df_passengers) - len(nao_vai)) - len(sem_carona),
+            "total_motoristas": len(active_drivers),
+            "motoristas_com_vagas": qtd_motoristas_vagas
+        }
+        
+        return active_drivers, sem_carona, mapa_vagas, stats
+
     def run(self):
         result_sidebar = self.view.render_sidebar()
         
         if result_sidebar and result_sidebar[0] == "CREATE":
-            _, tipo, nome, endereco, vagas, dias_selecionados, _, _, _, _ = result_sidebar
+            _, tipo, nome, _, vagas, dias_selecionados, _, _, _, _ = result_sidebar
             
             dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
             
@@ -27,7 +68,7 @@ class CaronaController:
                     new_df = pd.DataFrame([new_data])
                     self.model.save_new_driver(new_df)
                 else:
-                    new_data = {"Nome": nome, "Endereço": endereco}
+                    new_data = {"Nome": nome} 
                     for dia in dias_semana:
                         new_data[dia] = "" if dias_selecionados.get(dia) else "NÃO VAI"
                     
@@ -42,10 +83,12 @@ class CaronaController:
         df_drivers = self.model.get_drivers()
         df_passengers = self.model.get_passengers()
 
+        active_drivers, sem_carona, mapa_vagas, stats = self.processar_estatisticas(
+            df_drivers, df_passengers, selected_day
+        )
+
         result_dash = self.view.render_mobile_dashboard(
-            df_drivers, 
-            df_passengers, 
-            selected_day
+            active_drivers, sem_carona, mapa_vagas, stats, df_passengers, selected_day
         )
 
         if result_dash:
@@ -81,5 +124,7 @@ class CaronaController:
                 st.rerun()
                 
             elif action == "SAVE_TO_CLOUD":
-                self.model.commit_changes()
+                with st.spinner("☁️ Salvando na planilha do Google..."):
+                    self.model.commit_changes()
+                st.toast("✅ Todos os dados foram salvos!", icon="💾")
                 st.rerun()
